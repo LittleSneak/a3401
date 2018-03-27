@@ -5,8 +5,8 @@ import os, fnmatch
 import random
 import math
 
-dataDir = '/u/cs401/A3/data/'
-#dataDir = 'C:/Users/Admin/401a3/a3401/data'
+#dataDir = '/u/cs401/A3/data/'
+dataDir = 'C:/Users/Admin/401a3/a3401/data'
 
 class theta:
     def __init__(self, name, M=8,d=13):
@@ -183,13 +183,13 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
             newSigma = X[0]
             
             #Get numerators
-            for count in range(1, len(X)):
-                newMu = newMu + (X[count] * math.exp(log_ps[component][count]))
+            newMu = (np.exp(log_ps[component]).reshape(len(X), 1) * X).sum(axis=0)
             newSigma = logsumexp(log_ps[component].reshape(len(X), 1), axis=0, b=X ** 2)
                 
             #Divide by denominators
             newMu = newMu / (myTheta.omega[component] * len(X))
             newSigma = (np.exp(newSigma) / (myTheta.omega[component] * len(X))) - (newMu ** 2)
+
             for z in range(0, len(newSigma)):
                 if newSigma[z] < 0:
                     print(newSigma[z])
