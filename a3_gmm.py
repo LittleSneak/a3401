@@ -1,9 +1,12 @@
 from sklearn.model_selection import train_test_split
+from scipy.special import logsumexp
 import numpy as np
 import os, fnmatch
 import random
+import math
 
 dataDir = '/u/cs401/A3/data/'
+#dataDir = 'C:/Users/Admin/401a3/a3401/data'
 
 class theta:
     def __init__(self, name, M=8,d=13):
@@ -21,15 +24,86 @@ def log_b_m_x( m, x, myTheta, preComputedForM=[]):
         If you do this, you pass that precomputed component in preComputedForM
 
     '''
-    print ( 'TODO' )
+    #Check if there's a precomputation
+    if(len(preComputedForM) == 0):
+        preCom = precompute(myTheta.mu[m], myTheta.Sigma[m])
+    else:
+        preCom = preComputedForM[m]
+        
+    #Calculate the first term
+    sumPart = np.zeros((len(x),len(x[0])))
+    s = myTheta.Sigma[m]
+    mu = myTheta.mu[m]
+    
+    #Vectorize calculations...
+    sumPart = (0.5 * (x ** 2) * (1 / s)) - (mu * x * (1 / s))
+    sumPart = sumPart.sum(axis=1)
+        
+    #TODO: assume that a Txd matrix is given instead so each row represents a vector
+    return (-1 * sumPart) - preCom
+
+
+
+def precompute(mu, sigma):
+    """Performs the precomputation for log_b_m_x given the mu and sigma of
+       the model
+    """    
+    sumPart = 0
+    d = len(mu)
+    for index in range(0, d):
+        sumPart = sumPart + ((mu[index] ** 2) / (2 * sigma[index]))
+    
+    productPart = 1
+    for index in range(0, d):
+        productPart = productPart * sigma[index]
+        
+    return sumPart + ((d / 2) * math.log(2 * math.pi)) + (0.5) * math.log(productPart)
 
     
-def log_p_m_x( m, x, myTheta):
+def log_p_m_x( m, x, myTheta, precomBMX=[]):
     ''' Returns the log probability of the m^{th} component given d-dimensional vector x, and model myTheta
         See equation 2 of handout
     '''
-    print ( 'TODO' )
+    #Compute the log b values if not given...
+    if(len(precomBMX) == 0):
+        for component in range(0, len(myTheta.omega)):
+            precomBMX.append(log_b_m_x(m, x, myTheta))
 
+    #Calculate log of the numerator
+    bm = []
+    for component in range(0, len(myTheta.omega)):
+        bm.append(log_b_m_x(m, x, myTheta))
+    numerator = logsumexp([bm[m]], [myTheta.omega[m]])
+    
+    #Calculate log of the denominator
+    #Take the column vector of omegas and repeat each column T times
+    #to make a MxT omega matrix
+    thetaMatrix = np.repeat(myTheta.omega, len(precomBMX[0]), axis=1)
+    #Each bk is multiplied by wk then they are summed by rows
+    denom = logsumexp(bm, axis=0, b=myTheta.omega)
+    
+    return numerator - denom
+
+def log_p_m_x_vectorized(m, myTheta, precomBMX):
+    """
+    Returns vector of log_p_m_x values for corresponding component.
+    vectorized so it's faster.
+    """
+
+    #Calculate log of the numerator
+    #This takes the vector of bs for component m and multiplies it with
+    #the omega for component m. exp(b) is taken before multiplying
+    omega_vector = np.repeat([myTheta.omega[m]], len(precomBMX[0]), axis=1)
+    numerator = logsumexp(precomBMX[m], axis=0, b=omega_vector)
+    
+    #Calculate log of the denominator
+    #Take the column vector of omegas and repeat each column T times
+    #to make a MxT omega matrix
+    thetaMatrix = np.repeat(myTheta.omega, len(precomBMX[0]), axis=1)
+    #Each bk is multiplied by wk then they are summed by rows
+    denom = logsumexp(precomBMX, axis=0, b=thetaMatrix)
+    
+    return numerator - denom    
     
 def logLik( log_Bs, myTheta ):
     ''' Return the log likelihood of 'X' using model 'myTheta' and precomputed MxT matrix, 'log_Bs', of log_b_m_x
@@ -43,13 +117,84 @@ def logLik( log_Bs, myTheta ):
 
         See equation 3 of the handout
     '''
-    print( 'TODO' )
+    #Do nothing if no log_Bs given
+    if(len(log_Bs) == 0):
+        return
+    
+    #Take the column vector of omegas and repeat each column T times
+    #to make a MxT omega matrix
+    thetaMatrix = np.repeat(myTheta.omega, len(log_Bs[0]), axis=1)
+    
+    #This gets log(SUM(wm * bm))
+    logsum = logsumexp(log_Bs, axis=0, b=thetaMatrix)
+    
+    return sum(logsum)
 
     
 def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
     ''' Train a model for the given speaker. Returns the theta (omega, mu, sigma)'''
     myTheta = theta( speaker, M, X.shape[1] )
-    print ('TODO')
+    
+    #Initialize values of myTheta
+    #Random vector for each mu
+    for i in range(0, len(myTheta.mu)):
+        rand_v = random.randint(0, X.shape[0] - 1)
+        myTheta.mu[i] = X[rand_v]
+    #Initialize all sigmas to 1
+    for i in range(0, len(myTheta.Sigma)):
+        for j in range(0, len(myTheta.Sigma[i])):
+            myTheta.Sigma[i][j] = 1
+    #Initialize all omegas to 1 / M
+    for i in range(0, len(myTheta.omega)):
+        myTheta.omega[i] = 1 / M
+    
+    #Now do the iterations
+    prev_L = float('-inf')
+    improvement = float('inf')
+    i = 0
+    log_bs = np.zeros((M,len(X)))
+    log_ps = np.zeros((M,len(X)))
+    while(i < maxIter and improvement >= epsilon):
+        #Precompute values
+        precom = []
+        for comp in range(0, M):
+            precom.append(precompute(myTheta.mu[comp], myTheta.Sigma[comp]))
+            
+        #Get b values
+        for comp in range(0, M):
+            log_bs[comp] = log_b_m_x(comp, X, myTheta, precom)
+        #Get p values
+        for comp in range(0, M):
+            log_ps[comp] = log_p_m_x_vectorized(comp, myTheta, log_bs)
+        
+        #Get log like
+        new_L = logLik(log_bs, myTheta)
+        improvement = new_L - prev_L
+        prev_L = new_L
+        
+        #New omegas
+        sumlogps = logsumexp(log_ps, axis=1)
+        for component in range(0, M):
+            myTheta.omega[component][0] = math.exp(sumlogps[component]) / len(X)
+        
+        #New means and sigmas, could not figure out how to vectorize
+        for component in range(0, M):
+            newMu = X[0]
+            newSigma = X[0]
+            
+            #Get numerators
+            for count in range(1, len(X)):
+                newMu = newMu + (X[count] * math.exp(log_ps[component][count]))
+            newSigma = logsumexp(log_ps[component].reshape(len(X), 1), axis=0, b=X ** 2)
+                
+            #Divide by denominators
+            newMu = newMu / (myTheta.omega[component] * len(X))
+            newSigma = (np.exp(newSigma) / (myTheta.omega[component] * len(X))) - (newMu ** 2)
+            
+            myTheta.mu[component] = newMu
+            myTheta.Sigma[component] = newSigma
+        
+        i = i + 1
     return myTheta
 
 
@@ -67,7 +212,24 @@ def test( mfcc, correctID, models, k=5 ):
         the format of the log likelihood (number of decimal places, or exponent) does not matter
     '''
     bestModel = -1
-    print ('TODO')
+    #First iterate through all models and within that iterate through all components
+    #This is to find the log_bs
+    #Then use that to get all the log likelihoods
+    likelihoods = []
+    for model in models:
+        log_bs = []
+        for component in range(0, len(model.omega)):
+            log_bs.append(log_b_m_x(component, mfcc, model))
+        likelihoods.append(logLik(log_bs, model))
+        
+    maxIndex = 0
+    maxVal = likelihoods[0]
+    for i in range(0, len(likelihoods)):
+        if(likelihoods[i] > maxVal):
+            maxIndex = i
+            maxVal = likelihoods[i]
+    
+    bestModel = maxIndex
     return 1 if (bestModel == correctID) else 0
 
 
@@ -96,7 +258,7 @@ if __name__ == "__main__":
             for file in files:
                 myMFCC = np.load( os.path.join( dataDir, speaker, file ) )
                 X = np.append( X, myMFCC, axis=0)
-
+                
             trainThetas.append( train(speaker, X, M, epsilon, maxIter) )
 
     # evaluate 
@@ -104,4 +266,5 @@ if __name__ == "__main__":
     for i in range(0,len(testMFCCs)):
         numCorrect += test( testMFCCs[i], i, trainThetas, k ) 
     accuracy = 1.0*numCorrect/len(testMFCCs)
+    print(accuracy)
 
