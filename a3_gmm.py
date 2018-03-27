@@ -190,10 +190,10 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
             #Divide by denominators
             newMu = newMu / (myTheta.omega[component] * len(X))
             newSigma = (np.exp(newSigma) / (myTheta.omega[component] * len(X))) - (newMu ** 2)
-            for i in range(0, len(newSigma)):
-                if newSigma[i] < 0:
-                    print(newSigma[i])
-                    newSigma[i] = 0
+            for z in range(0, len(newSigma)):
+                if newSigma[z] < 0:
+                    print(newSigma[z])
+                    newSigma[z] = 1
             
             myTheta.mu[component] = newMu
             myTheta.Sigma[component] = newSigma
