@@ -190,10 +190,10 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
             newMu = newMu / (myTheta.omega[component] * len(X))
             newSigma = (np.exp(newSigma) / (myTheta.omega[component] * len(X))) - (newMu ** 2)
 
-            for z in range(0, len(newSigma)):
+            """for z in range(0, len(newSigma)):
                 if newSigma[z] < 0:
                     print(newSigma[z])
-                    newSigma[z] = 1
+                    newSigma[z] = 1"""
             
             myTheta.mu[component] = newMu
             myTheta.Sigma[component] = newSigma
@@ -220,20 +220,24 @@ def test( mfcc, correctID, models, k=5 ):
     #This is to find the log_bs
     #Then use that to get all the log likelihoods
     likelihoods = []
+    m = 0
     for model in models:
         log_bs = []
         for component in range(0, len(model.omega)):
             log_bs.append(log_b_m_x(component, mfcc, model))
-        likelihoods.append(logLik(log_bs, model))
+        likelihoods.append((m, logLik(log_bs, model)))
+        m = m + 1
         
-    maxIndex = 0
-    maxVal = likelihoods[0]
-    for i in range(0, len(likelihoods)):
-        if(likelihoods[i] > maxVal):
-            maxIndex = i
-            maxVal = likelihoods[i]
+    top = sorted(likelihoods, reverse=True, key=lambda x: x[1])
     
-    bestModel = maxIndex
+    bestModel = top[0][0]
+    
+    #Print out to stdout the k best
+    print("[", correctID, "]")
+    for count in range(0, k):
+        if count >= len(top):
+            break
+        print("[", top[count][0], "]", " [", top[count][1], "]")
     return 1 if (bestModel == correctID) else 0
 
 
@@ -268,7 +272,7 @@ if __name__ == "__main__":
     # evaluate 
     numCorrect = 0;
     for i in range(0,len(testMFCCs)):
-        numCorrect += test( testMFCCs[i], i, trainThetas, k ) 
+        numCorrect += test( testMFCCs[i], i, trainThetas, k )
+        print("\n")
     accuracy = 1.0*numCorrect/len(testMFCCs)
     print(accuracy)
-
