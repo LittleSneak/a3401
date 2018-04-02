@@ -5,8 +5,8 @@ import os, fnmatch
 import random
 import math
 
-#dataDir = '/u/cs401/A3/data/'
-dataDir = 'C:/Users/Admin/401a3/a3401/data'
+dataDir = '/u/cs401/A3/data/'
+#dataDir = 'C:/Users/Admin/401a3/a3401/data'
 
 class theta:
     def __init__(self, name, M=8,d=13):
@@ -245,7 +245,6 @@ if __name__ == "__main__":
 
     trainThetas = []
     testMFCCs = []
-    print('TODO: you will need to modify this main block for Sec 2.3')
     d = 13
     k = 5  # number of top speakers to display, <= 0 if none
     M = 8
