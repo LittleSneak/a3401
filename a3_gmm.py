@@ -189,7 +189,7 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
                 
             #Divide by denominators
             newMu = newMu / (myTheta.omega[component] * len(X))
-            newSigma = newSigma / ((myTheta.omega[component] * len(X)) - (newMu ** 2))
+            newSigma = (newSigma / (myTheta.omega[component] * len(X))) - (newMu ** 2)
 
             """for z in range(0, len(newSigma)):
                 if newSigma[z] < 0:
