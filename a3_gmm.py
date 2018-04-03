@@ -174,9 +174,9 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
         prev_L = new_L
         
         #New omegas
-        sumlogps = logsumexp(log_ps, axis=1)
+        sumlogps = np.exp(log_ps[component]).sum(axis=0)
         for component in range(0, M):
-            myTheta.omega[component][0] = math.exp(sumlogps[component]) / len(X)
+            myTheta.omega[component][0] = sumlogps[component] / len(X)
         
         #New means and sigmas, could not figure out how to vectorize
         for component in range(0, M):
