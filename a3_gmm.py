@@ -177,6 +177,7 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
         sumlogps = np.exp(log_ps).sum(axis=0)
         for component in range(0, M):
             myTheta.omega[component][0] = sumlogps[component] / len(X)
+        print(myTheta.omega)
         
         #New means and sigmas, could not figure out how to vectorize
         for component in range(0, M):
@@ -191,10 +192,10 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
             newMu = newMu / (myTheta.omega[component] * len(X))
             newSigma = (newSigma / (myTheta.omega[component] * len(X))) - (newMu ** 2)
 
-            """for z in range(0, len(newSigma)):
+            for z in range(0, len(newSigma)):
                 if newSigma[z] < 0:
                     print(newSigma[z])
-                    newSigma[z] = 1"""
+                    newSigma[z] = 1
             
             myTheta.mu[component] = newMu
             myTheta.Sigma[component] = newSigma
