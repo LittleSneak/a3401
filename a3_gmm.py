@@ -185,7 +185,7 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
             
             #Get numerators
             newMu = (np.exp(log_ps[component]).reshape(len(X), 1) * X).sum(axis=0)
-            newSigma = (np.exp(log_ps[component]).reshape(len(X), 1) * X ** 2).sum(axis=0)
+            newSigma = (np.exp(log_ps[component]).reshape(len(X), 1) * (X ** 2)).sum(axis=0)
                 
             #Divide by denominators
             newMu = newMu / (myTheta.omega[component] * len(X))
