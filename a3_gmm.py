@@ -155,6 +155,7 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
     log_bs = np.zeros((M,len(X)))
     log_ps = np.zeros((M,len(X)))
     while(i < maxIter and improvement >= epsilon):
+        print("Iteration", i, improvement)
         #Precompute values
         precom = []
         for comp in range(0, M):
@@ -184,11 +185,11 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
             
             #Get numerators
             newMu = (np.exp(log_ps[component]).reshape(len(X), 1) * X).sum(axis=0)
-            newSigma = logsumexp(log_ps[component].reshape(len(X), 1), axis=0, b=X ** 2)
+            newSigma = (np.exp(log_ps[component]).reshape(len(X), 1) * X ** 2).sum(axis=0)
                 
             #Divide by denominators
             newMu = newMu / (myTheta.omega[component] * len(X))
-            newSigma = (np.exp(newSigma) / (myTheta.omega[component] * len(X))) - (newMu ** 2)
+            newSigma = newSigma / ((myTheta.omega[component] * len(X)) - (newMu ** 2))
 
             """for z in range(0, len(newSigma)):
                 if newSigma[z] < 0:
@@ -274,4 +275,4 @@ if __name__ == "__main__":
         numCorrect += test( testMFCCs[i], i, trainThetas, k )
         print("\n")
     accuracy = 1.0*numCorrect/len(testMFCCs)
-    print(accuracy)
+    print("Accuracy:", accuracy)
