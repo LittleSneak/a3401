@@ -174,7 +174,7 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
         prev_L = new_L
         
         #New omegas
-        sumlogps = np.exp(log_ps[component]).sum(axis=0)
+        sumlogps = np.exp(log_ps).sum(axis=0)
         for component in range(0, M):
             myTheta.omega[component][0] = sumlogps[component] / len(X)
         
